@@ -1,0 +1,2 @@
+#!/bin/sh
+node .skin-updater/skin-updater.js
