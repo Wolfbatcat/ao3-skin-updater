@@ -1,16 +1,26 @@
 @echo off
-if not exist ".git" (
-    echo Error: .git folder not found. Run this from your project root.
+setlocal enabledelayedexpansion
+
+REM Determine project root
+if exist ".git" (
+    set "root=."
+) else if exist "..\.git" (
+    set "root=.."
+) else (
+    echo Error: .git folder not found
     pause
     exit /b 1
 )
 
 echo Installing AO3 Skin Updater...
 
-mkdir .git\hooks 2>nul
-copy .skin-updater\pre-commit .git\hooks\pre-commit >nul
+REM Use Node.js to write hook with guaranteed LF line endings (avoids CRLF issues)
+node -e "var fs=require('fs');fs.mkdirSync('!root!\\.git\\hooks',{recursive:true});fs.writeFileSync('!root!\\.git\\hooks\\pre-commit','#!/bin/sh\nnode .skin-updater/skin-updater.js\n',{encoding:'utf8'});" >nul 2>&1
 
-if exist ".git\hooks\pre-commit" (
+REM Add .gitattributes entry to prevent git autocrlf from corrupting the hook source
+node -e "var fs=require('fs'),p='!root!\\.gitattributes',rule='\n.skin-updater/pre-commit text eol=lf\n',c='';try{c=fs.readFileSync(p,'utf8')}catch(e){}if(!c.includes('.skin-updater/pre-commit')){fs.writeFileSync(p,c+rule,'utf8');}" >nul 2>&1
+
+if exist "!root!\.git\hooks\pre-commit" (
     echo ✓ Installed
     echo.
     echo Add to your CSS metadata:

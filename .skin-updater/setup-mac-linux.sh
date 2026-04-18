@@ -8,8 +8,12 @@ fi
 echo "Installing AO3 Skin Updater..."
 
 mkdir -p .git/hooks
-cp .skin-updater/pre-commit .git/hooks/pre-commit
+# Write hook via Node.js to guarantee LF line endings
+node -e "var fs=require('fs');fs.writeFileSync('.git/hooks/pre-commit','#!/bin/sh\nnode .skin-updater/skin-updater.js\n',{encoding:'utf8'});"
 chmod +x .git/hooks/pre-commit
+
+# Add .gitattributes entry to prevent git autocrlf from corrupting the hook source
+node -e "var fs=require('fs'),p='.gitattributes',rule='\n.skin-updater/pre-commit text eol=lf\n',c='';try{c=fs.readFileSync(p,'utf8')}catch(e){}if(!c.includes('.skin-updater/pre-commit')){fs.writeFileSync(p,c+rule,'utf8');}"
 
 if [ -f ".git/hooks/pre-commit" ]; then
     echo "✓ Installed"
