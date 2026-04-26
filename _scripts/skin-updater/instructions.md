@@ -1,6 +1,6 @@
-# AO3: Skin Updater
+# VSCode: Skin Updater
 
-Automatically update AO3 skin timestamps on git commit.
+Automatically metadata timestamps on git commit.
 
 ## Setup
 
