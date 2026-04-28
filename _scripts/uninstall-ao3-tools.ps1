@@ -9,6 +9,8 @@ $GuideStart = "<!-- AO3-GUIDE:START -->"
 $GuideEnd = "<!-- AO3-GUIDE:END -->"
 $HookStart = "# AO3-TOOLS:START"
 $HookEnd = "# AO3-TOOLS:END"
+$ExcludeStart = "# AO3-TOOLS-IGNORE:START"
+$ExcludeEnd = "# AO3-TOOLS-IGNORE:END"
 
 function Show-Info {
   param([string]$Message, [string]$Title = "AO3 Tools")
@@ -65,18 +67,21 @@ $manifestPath = Join-Path $TargetRepoPath '.ao3-tools\install-manifest.json'
 $knownCopiedPaths = @('docs/ao3', '_scripts/skin-timestamp-updater')
 $managedFiles = @('CLAUDE.md', 'AGENTS.md', '.github/copilot-instructions.md')
 $hookPath = '.git/hooks/pre-commit'
+$excludePath = '.git/info/exclude'
 
 if (Test-Path -LiteralPath $manifestPath) {
   $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
   if ($manifest.copiedPaths) { $knownCopiedPaths = @($manifest.copiedPaths) }
   if ($manifest.managedFiles) { $managedFiles = @($manifest.managedFiles) }
   if ($manifest.hook.path) { $hookPath = [string]$manifest.hook.path }
+  if ($manifest.localExcludes.path) { $excludePath = [string]$manifest.localExcludes.path }
 }
 
 foreach ($file in $managedFiles) {
   Remove-ManagedBlock -Path (Join-Path $TargetRepoPath $file) -Start $GuideStart -End $GuideEnd -DeleteIfEmpty
 }
 Remove-ManagedBlock -Path (Join-Path $TargetRepoPath $hookPath) -Start $HookStart -End $HookEnd -DeleteIfEmpty
+Remove-ManagedBlock -Path (Join-Path $TargetRepoPath $excludePath) -Start $ExcludeStart -End $ExcludeEnd
 
 foreach ($relative in $knownCopiedPaths) {
   $full = Join-Path $TargetRepoPath $relative

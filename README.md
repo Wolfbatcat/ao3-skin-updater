@@ -29,11 +29,24 @@ Every project gets:
 - `docs/ao3/reference/` AO3 reference docs
 - managed AO3 blocks in `CLAUDE.md`, `AGENTS.md`, and `.github/copilot-instructions.md`
 - `.ao3-tools/install-manifest.json`
+- a managed local exclude block in `.git/info/exclude` so AO3 Tools files stay out of GitHub by default
 
 Skin projects also get:
 
 - `_scripts/skin-timestamp-updater/`
 - a managed block in `.git/hooks/pre-commit`
+
+The local exclude block ignores:
+
+- `docs/ao3/`
+- `_scripts/skin-timestamp-updater/`
+- `.ao3-tools/`
+- `CLAUDE.md`
+- `AGENTS.md`
+- `AGENT.md`
+- `.github/copilot-instructions.md`
+
+If any of these paths were already tracked before installation, Git can still push them until they are removed from the index with `git rm --cached`.
 
 ## Requirements
 

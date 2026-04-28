@@ -14,6 +14,18 @@ AI-readable reference docs for AO3 site skins, work skins, and userscripts. Inst
 - `AGENTS.md`
 - `.github/copilot-instructions.md`
 
+Installer also writes a managed AO3 Tools block to `.git/info/exclude` in Git repos so toolkit files are local-only by default:
+
+- `docs/ao3/`
+- `_scripts/skin-timestamp-updater/`
+- `.ao3-tools/`
+- `CLAUDE.md`
+- `AGENTS.md`
+- `AGENT.md`
+- `.github/copilot-instructions.md`
+
+Already tracked paths remain public-capable until removed from the Git index.
+
 The guide uses section `Type:` labels:
 
 - `HARD RULE`: enforced by AO3 sanitizer, parser, runtime, or config.
@@ -31,7 +43,7 @@ Git is required for automatic timestamp updates. Node is not required.
 
 ## Installer UX
 
-- `Install AO3 Tools.bat`: double-click installer with folder picker and project type choice.
+- `Install AO3 Tools.bat`: double-click installer with folder picker, project type choice, and local-only Git excludes.
 - `Uninstall AO3 Tools.bat`: double-click uninstaller with folder picker and confirmation.
 - `_scripts/install-ao3-tools.ps1` and `_scripts/uninstall-ao3-tools.ps1` are internal implementation scripts.
 

@@ -15,6 +15,8 @@ $GuideStart = "<!-- AO3-GUIDE:START -->"
 $GuideEnd = "<!-- AO3-GUIDE:END -->"
 $HookStart = "# AO3-TOOLS:START"
 $HookEnd = "# AO3-TOOLS:END"
+$ExcludeStart = "# AO3-TOOLS-IGNORE:START"
+$ExcludeEnd = "# AO3-TOOLS-IGNORE:END"
 
 function Show-Info {
   param([string]$Message, [string]$Title = "AO3 Tools")
@@ -94,6 +96,35 @@ function Test-GitRepo {
   return (Test-Path -LiteralPath (Join-Path $Target '.git'))
 }
 
+function Install-GitExclude {
+  param([string]$Target, [string[]]$Patterns)
+  if (-not (Test-GitRepo $Target)) { return $false }
+  $excludePath = Join-Path $Target '.git\info\exclude'
+  $block = ($Patterns -join "`r`n")
+  Set-ManagedBlock -Path $excludePath -Start $ExcludeStart -End $ExcludeEnd -Block $block
+  return $true
+}
+
+function Get-TrackedAo3ToolPaths {
+  param([string]$Target, [string[]]$Patterns)
+  if (-not (Test-GitRepo $Target)) { return @() }
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return @() }
+  $tracked = New-Object System.Collections.Generic.List[string]
+  Push-Location $Target
+  try {
+    foreach ($pattern in $Patterns) {
+      $pathspec = $pattern.TrimStart('/').TrimEnd('/')
+      $result = & git ls-files -- $pathspec 2>$null
+      foreach ($line in @($result)) {
+        if ($line) { $tracked.Add($line) }
+      }
+    }
+  } finally {
+    Pop-Location
+  }
+  return @($tracked | Sort-Object -Unique)
+}
+
 function Install-Hook {
   param([string]$Target)
   if (-not (Test-GitRepo $Target)) { return $false }
@@ -150,7 +181,17 @@ elseif ($ProjectType -eq 'Mixed') {
 $installedModules = @('ao3-dev-guide')
 $copiedPaths = New-Object System.Collections.Generic.List[string]
 $managedFiles = @('CLAUDE.md', 'AGENTS.md', '.github/copilot-instructions.md')
+$localOnlyPatterns = @(
+  '/docs/ao3/',
+  '/_scripts/skin-timestamp-updater/',
+  '/.ao3-tools/',
+  '/CLAUDE.md',
+  '/AGENTS.md',
+  '/AGENT.md',
+  '/.github/copilot-instructions.md'
+)
 $hookInstalled = $false
+$excludeInstalled = $false
 
 $docsDir = Join-Path $TargetRepoPath 'docs\ao3'
 if (Test-Path -LiteralPath $docsDir) { Remove-Item -LiteralPath $docsDir -Recurse -Force }
@@ -212,6 +253,9 @@ Set-ManagedBlock -Path (Join-Path $TargetRepoPath 'CLAUDE.md') -Start $GuideStar
 Set-ManagedBlock -Path (Join-Path $TargetRepoPath 'AGENTS.md') -Start $GuideStart -End $GuideEnd -Block $codexBlock.Trim()
 Set-ManagedBlock -Path (Join-Path $TargetRepoPath '.github\copilot-instructions.md') -Start $GuideStart -End $GuideEnd -Block $copilotBlock.Trim()
 
+$excludeInstalled = Install-GitExclude -Target $TargetRepoPath -Patterns $localOnlyPatterns
+$trackedAo3ToolPaths = Get-TrackedAo3ToolPaths -Target $TargetRepoPath -Patterns $localOnlyPatterns
+
 $manifestDir = Join-Path $TargetRepoPath '.ao3-tools'
 New-Item -ItemType Directory -Force -Path $manifestDir | Out-Null
 $manifest = [ordered]@{
@@ -224,12 +268,15 @@ $manifest = [ordered]@{
   managedFiles = $managedFiles
   guideMarkers = @{ start = $GuideStart; end = $GuideEnd }
   hook = @{ path = '.git/hooks/pre-commit'; installed = $hookInstalled; start = $HookStart; end = $HookEnd }
+  localExcludes = @{ path = '.git/info/exclude'; installed = $excludeInstalled; start = $ExcludeStart; end = $ExcludeEnd; patterns = $localOnlyPatterns }
 }
 $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $manifestDir 'install-manifest.json') -Encoding UTF8
 
 $verb = if ($isUpdate) { "updated" } else { "installed" }
 $message = "AO3 Tools $verb.`r`n`r`nProject type: $ProjectType`r`nModules: $($installedModules -join ', ')`r`nTarget: $TargetRepoPath"
 if ($installSkin -and -not $hookInstalled) { $message += "`r`n`r`nNote: Git repo not found; timestamp hook was not installed." }
+if ($excludeInstalled) { $message += "`r`n`r`nAO3 Tools files are ignored locally via .git/info/exclude, so new installs stay out of GitHub by default." }
+if ($trackedAo3ToolPaths.Count -gt 0) { $message += "`r`n`r`nNote: Some AO3 Tools paths are already tracked and can still be pushed until removed from Git index: $($trackedAo3ToolPaths -join ', ')" }
 Show-Info $message
 
 
